@@ -15,23 +15,23 @@ async function initializeExpressServer() {
 
   app.get("/api/get-todos", async(req, res)=>{
     try{
-        const cachedTodos = await redisClient.get('todos');
+        const arvind = await redisClient.get('todos');
 
-        if(!cachedTodos){
+        if(!arvind){
             console.log('no todos in the redis cache');
         }else{
-            return res.status(201).json(cachedTodos);
+            return res.status(201).json(JSON.parse(arvind));
         }
 
         const todos = await Todo.find({});
         
-        const todoData = { name: 'new todo', text: 'testing new todo' };
-        await redisClient.set('todos', JSON.stringify(todoData));
+        // const todoData = { name: 'new todo', text: 'testing new todo' };
+        await redisClient.set('todos', JSON.stringify(todos));
                 
         if(!todos){
             return res.status(201).json({message:'no todos'});
         }
-        res.status(201).json(JSON.parse(todos));
+        res.status(201).json(todos);
     }
     catch(err){
         console.log(err);
@@ -44,11 +44,17 @@ async function initializeExpressServer() {
         const{name, text} = req.body;
 
         const todo = new Todo({name, text});
-        await todo.save();
+       const newTodo =  await todo.save();
 
-        const allTodos = await Todo.find({});
-        
-        await redisClient.set('todos', JSON.stringify(allTodos));
+        let values = await redisClient.get('todos');
+
+        values  =  JSON.parse(values);
+
+        console.log(values)
+
+        values.push(newTodo);
+
+        await redisClient.set('todos', JSON.stringify(values));
                 
         res.status(201).json({message: 'added successfully'});
     }
@@ -74,24 +80,11 @@ async function initializeExpressServer() {
 
         const allTodos = await Todo.find({});
 
-        // const formattedTodos = allTodos.map(todo => ({
-        // id: todo._id,
-        // title: todo.name,
-        // description: todo.text
-        // }));
 
-        // 4. Update the Redis cache with the newly structured list
         await redisClient.set("todos", JSON.stringify(allTodos));
 
-        // 5. Respond with the single formatted updated item (or the full list)
         return res.status(200).json({
         message: "Todo updated successfully",
-        // todo: {
-        //     id: updatedTodo._id,
-        //     title: updatedTodo.name,
-        //     descri
-        // ption: updatedTodo.text
-        // }
         });
 
     } catch (error) {
